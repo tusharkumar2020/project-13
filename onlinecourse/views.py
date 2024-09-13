@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
 # <HINT> Import any new Models here
-from .models import Course, Enrollment
+from .models import Course, Enrollment, Choice, Question, Submission
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
@@ -111,7 +111,15 @@ def enroll(request, course_id):
          # Add each selected choice object to the submission object
          # Redirect to show_exam_result with the submission id
 #def submit(request, course_id):
-
+def submit(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    user = request.user
+    enrollment = Enrollment.objects.get(user=user, course=course)
+    submission = Submission.objects.create(enrollment=enrollment)
+    choices = extract_answers(request)
+    submission.choices.set(choices)
+    submission_id = submission.id
+    return HttpResponseRedirect(reverse(viewname='onlinecourse:exam_result', args=(course_id, submission_id,)))
 
 # An example method to collect the selected choices from the exam form from the request object
 def extract_answers(request):
@@ -131,6 +139,51 @@ def extract_answers(request):
         # For each selected choice, check if it is a correct answer or not
         # Calculate the total score
 #def show_exam_result(request, course_id, submission_id):
+def show_exam_result(request, course_id, submission_id):
+    context = {}
+    course = get_object_or_404(Course, pk=course_id)
+    submission = Submission.objects.get(id=submission_id)
+    choices = submission.choices.all()
+    choice_ids=[]
+    for choice in choices:
+        choice_ids.append(choice.id)
+    # created a list of choice_ids of a submission
+    # choices that were submitted,make a list
+    total_score = 0
+    questions = course.question_set.all()
+    # questions in the course
+    # Handles even multiple choice questions with multi correct options
+    for question in questions:
+        # for each question there are few options
+        # each question have their own grade and all questions grades total to 100
+        q_grade = question.grade
+        temp_score=0
+        for q_choice in question.choice_set.all():
+            if q_choice.is_correct:
+                # if this choice is not submitted
+                if q_choice.id not in choice_ids:
+                    temp_score=0
+                    break
+                else:
+                    # option is correct and  marked by user
+                    temp_score=q_grade
+            else:
+                # implies this option is incorrect, so if it is in submission-->it is incorrect
+                if q_choice.id in choice_ids:
+                    temp_score=0
+                    break
+        if temp_score>0:
+            total_score+=q_grade
+    
+    context['course'] = course
+    context['grade'] = total_score
+    context['choices'] = choices
+
+    return render(request, 'onlinecourse/exam_result_bootstrap.html', context)
+    # The below logic doesnt work in multi correct answer
+    # for choice in choices:
+    #     if choice.is_correct:
+    #         total_score += choice.question.grade
 
 
 
