@@ -155,34 +155,35 @@ def show_exam_result(request, course_id, submission_id):
     # Handles even multiple choice questions with multi correct options
     for question in questions:
         # for each question there are few options
+        # each question have their own grade and all questions grades total to 100
+        q_grade = question.grade
         temp_score=0
         for q_choice in question.choice_set.all():
             if q_choice.is_correct:
                 # if this choice is not submitted
                 if q_choice.id not in choice_ids:
-                    temp_score-=choice.question.grade
+                    temp_score=0
+                    break
                 else:
                     # option is correct and  marked by user
-                    temp_score+=(choice.question.grade)
+                    temp_score=q_grade
             else:
                 # implies this option is incorrect, so if it is in submission-->it is incorrect
                 if q_choice.id in choice_ids:
-                    temp_score-=choice.question.grade
+                    temp_score=0
                     break
         if temp_score>0:
-            total_score+=choice.question.grade
-            
-            
-            
-
-
-    # for choice in choices:
-    #     if choice.is_correct:
-    #         total_score += choice.question.grade
+            total_score+=q_grade
+    
     context['course'] = course
     context['grade'] = total_score
     context['choices'] = choices
 
     return render(request, 'onlinecourse/exam_result_bootstrap.html', context)
+    # The below logic doesnt work in multi correct answer
+    # for choice in choices:
+    #     if choice.is_correct:
+    #         total_score += choice.question.grade
+
 
 
