@@ -144,10 +144,41 @@ def show_exam_result(request, course_id, submission_id):
     course = get_object_or_404(Course, pk=course_id)
     submission = Submission.objects.get(id=submission_id)
     choices = submission.choices.all()
-    total_score = 0
+    choice_ids=[]
     for choice in choices:
-        if choice.is_correct:
-            total_score += choice.question.grade
+        choice_ids.append(choice.id)
+    # created a list of choice_ids of a submission
+    # choices that were submitted,make a list
+    total_score = 0
+    questions = course.question_set.all()
+    # questions in the course
+    # Handles even multiple choice questions with multi correct options
+    for question in questions:
+        # for each question there are few options
+        temp_score=0
+        for q_choice in question.choice_set.all():
+            if q_choice.is_correct:
+                # if this choice is not submitted
+                if q_choice.id not in choice_ids:
+                    temp_score-=choice.question.grade
+                else:
+                    # option is correct and  marked by user
+                    temp_score+=(choice.question.grade)
+            else:
+                # implies this option is incorrect, so if it is in submission-->it is incorrect
+                if q_choice.id in choice_ids:
+                    temp_score-=choice.question.grade
+                    break
+        if temp_score>0:
+            total_score+=choice.question.grade
+            
+            
+            
+
+
+    # for choice in choices:
+    #     if choice.is_correct:
+    #         total_score += choice.question.grade
     context['course'] = course
     context['grade'] = total_score
     context['choices'] = choices
