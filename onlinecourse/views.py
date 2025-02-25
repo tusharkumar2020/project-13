@@ -131,6 +131,35 @@ def extract_answers(request):
         # For each selected choice, check if it is a correct answer or not
         # Calculate the total score
 #def show_exam_result(request, course_id, submission_id):
+def show_exam_result(request, course_id, submission_id):
+    context = {}
+    course = get_object_or_404(Course, pk=course_id)
+    submission = Submission.objects.get(id=submission_id)
+    choices = submission.choices.all()
+
+    total_score = 0
+    max_score = 0  # Ensure we calculate the full possible score
+    questions = course.question_set.all()
+
+    for question in questions:
+        max_score += question.grade  # Track max possible score
+        correct_choices = question.choice_set.filter(is_correct=True)
+        selected_choices = choices.filter(question=question)
+        
+        # If all correct answers were chosen, award full marks
+        if set(correct_choices) == set(selected_choices):
+            total_score += question.grade
+
+    # Set a pass threshold, for example, 50%
+    pass_threshold = 50  
+    passing = (total_score / max_score) * 100 >= pass_threshold
+
+    context['course'] = course
+    context['grade'] = (total_score / max_score) * 100  # Convert to percentage
+    context['passing'] = passing
+    context['choices'] = choices
+
+    return render(request, 'onlinecourse/exam_result_bootstrap.html', context)
 
 
 
